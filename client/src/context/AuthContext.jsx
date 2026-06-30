@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import api from '../utils/api'
+import api, { API_BASE_URL } from '../utils/api'
 
 const AuthContext = createContext(null)
 
@@ -15,7 +15,8 @@ export function AuthProvider({ children }) {
   }, [])
 
   const login = () => {
-    window.location.href = '/api/auth/github'
+    // Full URL — the OAuth redirect must land on the backend origin directly.
+    window.location.href = `${API_BASE_URL}/api/auth/github`
   }
 
   const logout = async () => {
