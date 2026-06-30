@@ -9,7 +9,8 @@ Built for the **Senior Full-Stack Engineer Assessment**.
 ## Stack
 
 - **Frontend** — React 19 · React Router · Recharts · Tailwind CSS v4 · Vite
-- **Backend** — Node.js · Express · `@octokit/rest` · `express-session` · `node-cache`
+- **Backend** — Node.js · Express · `@octokit/rest` · `express-session` + `connect-redis`
+- **Cache / sessions** — Redis (Upstash on Vercel) with in-memory fallback for local dev
 - **Auth** — GitHub OAuth 2.0 (server-side session)
 - **Deploy** — Vercel (frontend static build + Express as serverless functions)
 
@@ -55,6 +56,10 @@ GITHUB_CLIENT_SECRET=your_client_secret
 SESSION_SECRET=any_long_random_string
 CLIENT_URL=http://localhost:5173
 PORT=3000
+
+# Redis — leave blank locally to use in-memory fallback.
+# For production use Upstash: https://console.upstash.com
+REDIS_URL=
 ```
 
 ### 3. Install & run
@@ -111,9 +116,32 @@ pr-intelligence-platform/
 
 ---
 
+## Deploying to Vercel
+
+1. **Push to GitHub** and import the repo into Vercel — `vercel.json` already wires the client static build + Express serverless function.
+
+2. **Create an Upstash Redis database** (free tier): https://console.upstash.com → copy the `redis://` connection string.
+
+3. **Set environment variables** in Vercel → Project Settings → Environment Variables:
+
+   | Variable | Value |
+   |---|---|
+   | `GITHUB_CLIENT_ID` | from your production OAuth App |
+   | `GITHUB_CLIENT_SECRET` | from your production OAuth App |
+   | `SESSION_SECRET` | long random string |
+   | `CLIENT_URL` | `https://your-app.vercel.app` |
+   | `REDIS_URL` | Upstash connection string |
+   | `NODE_ENV` | `production` (enables secure + SameSite=None cookies) |
+
+4. **Register a production GitHub OAuth App** with callback URL `https://your-app.vercel.app/api/auth/callback`.
+
+5. **Redeploy** — sessions now persist in Redis across serverless invocations and metrics cache is shared across regions.
+
+---
+
 ## Tradeoffs (MVP scope)
 
-- **In-memory cache, not Postgres** — simpler for the MVP; data is lost on restart. Production upgrade path: Redis + Postgres for persistence beyond the 90-day API window.
+- **Redis cache + sessions, no Postgres** — Redis handles ephemeral state (sessions, 15-min metric cache); Postgres would be next for persisting PR history beyond GitHub's 90-day window.
 - **On-demand fetch, not webhooks** — first load per repo is slow (parallelised, but bounded by GitHub API). Webhooks + background workers are the obvious next step.
 - **GitHub only** — adding GitLab/Bitbucket means another OAuth flow and a normalisation layer; deferred.
 - **REST, not GraphQL** — faster to ship; GraphQL would cut over-fetching at scale.

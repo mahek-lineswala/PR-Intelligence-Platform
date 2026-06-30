@@ -7,9 +7,9 @@ const {
   getPRComments
 } = require('../services/github');
 const { computeMetrics } = require('../services/metricsEngine');
-const NodeCache = require('node-cache');
+const cache = require('../services/cache');
 
-const cache = new NodeCache({ stdTTL: 900 });
+const CACHE_TTL_SECONDS = 900; // 15 minutes
 
 function requireAuth(req, res, next) {
   if (!req.session.accessToken) {
@@ -21,10 +21,10 @@ function requireAuth(req, res, next) {
 router.get('/:owner/:repo', requireAuth, async (req, res) => {
   const { owner, repo } = req.params;
   const { refresh } = req.query;
-  const cacheKey = `${owner}/${repo}`;
+  const cacheKey = `metrics:${owner}/${repo}`;
 
   if (!refresh) {
-    const cached = cache.get(cacheKey);
+    const cached = await cache.get(cacheKey);
     if (cached) return res.json({ ...cached, cached: true });
   }
 
@@ -46,7 +46,7 @@ router.get('/:owner/:repo', requireAuth, async (req, res) => {
 
     const metrics = computeMetrics(enrichedPRs);
     metrics.fetched_at = new Date().toISOString();
-    cache.set(cacheKey, metrics);
+    await cache.set(cacheKey, metrics, CACHE_TTL_SECONDS);
     res.json({ ...metrics, cached: false });
   } catch (err) {
     console.error(err);
