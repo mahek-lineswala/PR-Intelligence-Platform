@@ -7,7 +7,8 @@ export default function Login() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const error = params.get('error')
-
+ 
+  //comment for testing purposes
   useEffect(() => {
     if (user) navigate('/dashboard', { replace: true })
   }, [user, navigate])
