@@ -9,7 +9,16 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     api.get('/auth/me')
-      .then(res => setUser(res.data))
+      .then(res => {
+        // Guard against misconfigured deployments where a SPA rewrite returns
+        // index.html for /api/* — axios would otherwise treat HTML as a 200
+        // success and we'd "log in" as an HTML string.
+        if (res.data && typeof res.data === 'object' && res.data.login) {
+          setUser(res.data)
+        } else {
+          setUser(null)
+        }
+      })
       .catch(() => setUser(null))
       .finally(() => setLoading(false))
   }, [])
